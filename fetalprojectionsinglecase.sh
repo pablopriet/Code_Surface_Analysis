@@ -1,0 +1,4 @@
+#! /bin/bash
+out_folder="/Users/pabloprieto/Library/CloudStorage/OneDrive-Personal/Documentos/3rd_Year_Biomedical_Engineering_MENG/Summer_Studentship/Templates/Output_MSM"
+fea_folder="/Users/pabloprieto/Library/CloudStorage/OneDrive-Personal/Documentos/3rd_Year_Biomedical_Engineering_MENG/Summer_Studentship/Templates/Output_MSM/FeatureCombination"
+atlas_folder="/Users/pabloprieto/Library/CloudStorage/OneDrive-Personal/Documentos/3rd_Year_Biomedical_Engineering_MENG/Summer_Studentship/Templates/dhcp_fetal_brain_surface_atlas/atlas"
