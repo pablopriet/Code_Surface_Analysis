@@ -14,9 +14,10 @@ show_usage() {
     echo "  <output_folder> The output folder where all the registrations and the corresponding concatenations, and resampled features will be saved"
     echo
     echo "Options:"
-    echo "  -h, --help      Show this help message and exit."
-    echo "  -v, --verbose   Enable verbose mode."
-    echo "  -t, --type      Specify the processing type (default: 'basic')."
+    echo "  -h, --help           Show this help message and exit."
+    echo "  -v, --verbose        Enable verbose mode."
+    echo "  -t, --type           Specify the processing type (default: 'basic')."
+    echo "  -g, --group-level    Specifies the Group Level to which the registrations will be mapped"
     echo
     echo "Examples:"
     echo "  ${script_name} /path/to/atlas_folder /path/to/output_folder"
@@ -53,6 +54,15 @@ while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
         -t | --type)
             shift
             processing_type=$1
+            ;;
+        -g | --group-level)
+            shift
+            group_level=$1
+            # Ensure the input is a valid number between 21 and 36
+            if ! [[ "$group_level" =~ ^[0-9]+$ ]] || [ "$group_level" -lt 21 ] || [ "$group_level" -gt 36 ]; then
+                echo "Error: Group level should be a number between 21 and 36."
+                exit 1
+            fi
             ;;
     esac
     shift
