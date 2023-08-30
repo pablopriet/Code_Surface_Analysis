@@ -16,12 +16,13 @@ show_usage() {
     echo "Options:"
     echo "  -h, --help           Show this help message and exit."
     echo "  -v, --verbose        Enable verbose mode."
-    echo "  -t, --type           Specify the processing type (default: 'basic')."
-    echo "  -g, --group-level    Specifies the Group Level to which the registrations will be mapped"
+    echo "  -g, --group-level    Specifies the Group Level to which the registrations will be mapped."
+    echo "  -f, --feature        Specifies the features to be used to carry out the registration. Two features can be passed."
     echo
     echo "Examples:"
     echo "  ${script_name} /path/to/atlas_folder /path/to/output_folder"
     echo "  ${script_name} -v /path/to/atlas_folder /path/to/output_folder"
+    echo "  ${script_name} -f 21_weeks_feature1.gii -f 21_weeks_feature2.gii /path/to/atlas_folder /path/to/output_folder"
 }
 
 log_verbose() {
@@ -39,7 +40,6 @@ wb_command_path=$(which wb_command 2>/dev/null)
 if [ -z "$wb_command_path" ]; then
     echo "${script_name}:  wb_command (workbench) is not found. Please ensure it is installed."
 fi
-echo $wb_command_path
 
 msm_path=$(which msm 2>/dev/null)
 if [ -z "$msm_path" ]; then
@@ -65,20 +65,79 @@ while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
                 exit 1
             fi
             ;;
+        -f | --feature)
+            shift
+            if [ -z "$feature1" ]; then
+                feature1=$1
+            elif [ -z "$feature2" ]; then
+                feature2=$1
+            else
+                echo "Error: Too many feature files provided! Only two features can be provided"
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
     esac
     shift
 done
 if [[ "$1" == '--' ]]; then shift; fi
 
+echo "Arguments before parsing atlas and output folders: $@"
+
 # Remaining arguments after options are considered as atlas_folder and output_folder
-atlas_folder=$1
+atlas_folder=$1 
 output_folder=$2
 
+echo
+echo $atlas_folder
+echo $output_folder
+echo
+
 # Check if no arguments were passed or if help is requested, and output usage
-if  [ "$#" -eq 0 ] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+if [ "$#" -eq 0 ]; then
     show_usage
     exit 0
 fi
+
+# ------------------------------------------------------------------------------
+#                               Feature Merging  
+# ------------------------------------------------------------------------------
+
+
+if [[ $feature1 =~ curvature && $feature2 =~ sulc ]] || [[ $feature1 =~ sulc && $feature2 =~ curvature ]]; then
+
+    # Define the new directory for concatenated registrations
+    feature_folder="$output_folder/feature_folder"
+
+    log_verbose "Creating feature_folder directory, where merged features will be outputed"
+
+    # Create the directory if it doesn't exist
+    mkdir -p "$feature_folder"
+
+    # Both curvature and sulcus are provided (in either order).
+    log_verbose "Curvature and Sulc used for input features."
+    feature_case=1
+    for week in {21..36}; do
+        for side in left right; do
+            wb_command -metric-merge $feature_folder/fetal.week${week}.${side}.curvature.sulc.shape.gii -metric $atlas_folder/fetal.week${week}.${side}.curvature.shape.gii -metric $atlas_folder/fetal.week${week}.${side}.sulc.shape.gii
+        done
+    done
+elif [[ $feature1 =~ curvature || $feature2 =~ curvature ]]; then
+    # Only curvature is provided.
+    log_verbose "Curvature used for input features."
+    feature_case=2
+elif [[ $feature1 =~ sulc || $feature2 =~ sulc ]]; then
+    # Only sulcus is provided.
+    log_verbose "Sulc used for input features."
+    feature_case=3
+else
+    # Neither curvature nor sulcus are provided.
+    feature_case=0
+fi
+
 
 # ------------------------------------------------------------------------------
 #                           Multimodal Surface Matching 
@@ -88,15 +147,34 @@ fi
 for start_week in {21..36}; do
     let "next_week=start_week+1"
     for side in left right; do
+        case $feature_case in
+            1)
+                indata_file="$feature_folder/fetal.week${week}.${side}.curvature.sulc.shape.gii"
+                refdata_file="$feature_folder/fetal.week${week}.${side}.curvature.sulc.shape.gii"
+                ;;
+            2)
+                indata_file="$atlas_folder/fetal.week$start_week.$side.curvature.shape.gii"
+                refdata_file="$atlas_folder/fetal.week$next_week.$side.curvature.shape.gii"
+                ;;
+            3)
+                indata_file="$atlas_folder/fetal.week$start_week.$side.sulc.shape.gii"
+                refdata_file="$atlas_folder/fetal.week$next_week.$side.sulc.shape.gii"
+                ;;
+            0) 
+                echo "Error: Neither curvature nor sulc are present."
+                echo "Attempting to use sulc by default"
+                indata_file="$atlas_folder/fetal.week$start_week.$side.sulc.shape.gii"
+                refdata_file="$atlas_folder/fetal.week$next_week.$side.sulc.shape.gii"
+                ;;
+        esac
+
         # Saving each of the files into variables
         inmesh_file="$atlas_folder/fetal.week$start_week.$side.sphere.surf.gii"
         refmesh_file="$atlas_folder/fetal.week$next_week.$side.sphere.surf.gii"
-        indata_file="$atlas_folder/fetal.week$start_week.$side.sulc.shape.gii"
-        refdata_file="$atlas_folder/fetal.week$next_week.$side.sulc.shape.gii"
-        out_file="$output_folder/fetal.week${start_week}_${next_week}.$side.Sulc_Wrap"
-        
+        out_file="$output_folder/fetal.week${start_week}_${next_week}.$side.Sulc_Wrap."
+
         # Checking if the output file already exists
-        if [[ -f "${out_file}.sphere.reg.surf.gii" ]]; then
+        if [[ -f "${out_file}.sphere.reg.surf.gii" || -f "${out_file}sphere.reg.surf.gii" ]]; then
             echo "Output file for Week $start_week to $next_week, Side $side already exists. Skipping this iteration."
             continue
         fi
@@ -134,6 +212,8 @@ for start_week in {21..36}; do
 
     done
 done
+
+
 
 # ------------------------------------------------------------------------------
 #                         Registration Concatenation
