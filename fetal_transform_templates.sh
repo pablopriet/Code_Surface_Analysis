@@ -347,7 +347,7 @@ reproject_for_36(){
     for i in $(seq $prev -1 21); do
         for side in left right; do
 
-            in_metric="$atlas_folder/fetal.week${i}.$side.sulc.shape.gii"              
+            in_metric="$atlas_folder/fetal.week${i}.$side.curvature.shape.gii"              
             sphere_out="$concatenated_folder/fetal.week${i}_${end_week}.$side.Sulc_Wrap.sphere.surf.gii"
             new_sphere="$atlas_folder/fetal.week${end_week}.$side.sphere.surf.gii"
             current_area="$atlas_folder/fetal.week${i}.$side.midthickness.surf.gii"
@@ -368,8 +368,10 @@ reproject_for_21(){
     
     for i in $(seq $nex 36); do
         for side in left right; do
+            
+            #Switch it should sulc or curvature
 
-            in_metric="$atlas_folder/fetal.week${i}.$side.sulc.shape.gii"              
+            in_metric="$atlas_folder/fetal.week${i}.$side.curvature.shape.gii"              
             sphere_out="$concatenated_folder/fetal.week${i}_${start_week}.$side.Sulc_Wrap.sphere.surf.gii"
             new_sphere="$atlas_folder/fetal.week${start_week}.$side.sphere.surf.gii"
             current_area="$atlas_folder/fetal.week${i}.$side.midthickness.surf.gii"
